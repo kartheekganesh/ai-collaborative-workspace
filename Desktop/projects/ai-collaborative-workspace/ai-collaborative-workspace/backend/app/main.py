@@ -1,19 +1,14 @@
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+from app.core.database import engine, Base
+from app.models import workspace  # Ensures models are imported before Base creation
 
-app = FastAPI(
-    title="AI Collaborative Workspace API",
-    version="1.0.0"
-)
+app = FastAPI(title="AI Collaborative Workspace API", version="1.0.0")
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+@app.on_event("startup")
+async def init_tables():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
 
 @app.get("/health", tags=["Health"])
 async def health_check():
-    return {"status": "online", "system": "AI Workspace Core Service"}
+    return {"status": "online", "database": "connected"}
