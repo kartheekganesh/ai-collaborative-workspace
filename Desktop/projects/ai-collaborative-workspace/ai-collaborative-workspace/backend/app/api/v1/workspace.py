@@ -11,6 +11,7 @@ from app.schemas.workspace import WorkspaceCreate, WorkspaceUpdate, WorkspaceRes
 
 router = APIRouter(prefix="/workspaces", tags=["Workspaces"])
 
+
 @router.post("", response_model=WorkspaceResponse, status_code=status.HTTP_201_CREATED)
 async def create_workspace(
     workspace_in: WorkspaceCreate,
@@ -24,7 +25,7 @@ async def create_workspace(
         owner_id=current_user.id
     )
     db.add(new_workspace)
-    await db.flush()  # Flush to populate new_workspace.id
+    await db.flush()  # Populate new_workspace.id
 
     # 2. Automatically assign creator as ADMIN member
     membership = WorkspaceMember(
@@ -36,6 +37,7 @@ async def create_workspace(
     await db.commit()
     await db.refresh(new_workspace)
     return new_workspace
+
 
 @router.get("", response_model=List[WorkspaceResponse])
 async def list_my_workspaces(
@@ -51,6 +53,7 @@ async def list_my_workspaces(
     result = await db.execute(stmt)
     return result.scalars().all()
 
+
 @router.get("/{workspace_id}", response_model=WorkspaceResponse)
 async def get_workspace(
     workspace_id: uuid.UUID,
@@ -61,7 +64,15 @@ async def get_workspace(
 ):
     stmt = select(Workspace).where(Workspace.id == workspace_id)
     result = await db.execute(stmt)
-    return result.scalar_one()
+    workspace = result.scalar_one_or_none()
+    
+    if not workspace:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Workspace not found"
+        )
+    return workspace
+
 
 @router.patch("/{workspace_id}", response_model=WorkspaceResponse)
 async def update_workspace(
@@ -74,7 +85,13 @@ async def update_workspace(
 ):
     stmt = select(Workspace).where(Workspace.id == workspace_id)
     result = await db.execute(stmt)
-    workspace = result.scalar_one()
+    workspace = result.scalar_one_or_none()
+
+    if not workspace:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Workspace not found"
+        )
 
     if workspace_in.name is not None:
         workspace.name = workspace_in.name

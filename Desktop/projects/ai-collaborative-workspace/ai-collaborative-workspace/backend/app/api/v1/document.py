@@ -90,3 +90,14 @@ async def update_document(
     await db.commit()
     await db.refresh(doc)
     return doc
+# Inside patch endpoint in app/api/v1/document.py
+from app.tasks.document_tasks import create_document_snapshot
+
+# Trigger snapshot in the background if content changed
+if doc_in.content is not None:
+    doc.content = doc_in.content
+    create_document_snapshot.delay(
+        document_id=str(doc.id),
+        content=doc.content,
+        edited_by_user_id=str(current_user.id)
+    )
