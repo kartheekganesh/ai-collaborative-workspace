@@ -59,7 +59,7 @@ async def health_check():
 
 # 6. Static files and Frontend route handling
 frontend_path = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "../../frontend")
+    os.path.join(os.path.dirname(__file__), "./../frontend")
 )
 index_file_path = os.path.join(frontend_path, "index.html")
 
