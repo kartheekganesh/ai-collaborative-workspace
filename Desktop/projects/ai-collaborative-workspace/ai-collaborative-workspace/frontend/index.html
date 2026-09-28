@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Collaborative Workspace</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/components.css">
+</head>
+<body>
+    <div id="app" class="dashboard-container">
+        <!-- 1. Left Navigation Sidebar -->
+        <aside class="sidebar">
+            <div class="brand">
+                <h2>⚡ AI Workspace</h2>
+            </div>
+            <div class="user-profile" id="user-profile">
+                <span class="avatar">U</span>
+                <span id="user-name">Loading...</span>
+            </div>
+            <nav class="workspace-nav">
+                <h3>Workspaces</h3>
+                <ul id="workspace-list">
+                    <!-- Populated dynamically via JavaScript -->
+                </ul>
+                <button id="btn-create-workspace" class="btn-primary">+ New Workspace</button>
+            </nav>
+        </aside>
+
+        <!-- 2. Middle Document Explorer Panel -->
+        <section class="document-panel">
+            <div class="panel-header">
+                <h3 id="current-workspace-title">Select a Workspace</h3>
+                <button id="btn-create-doc" class="btn-secondary" disabled>+ New Doc</button>
+            </div>
+            <ul id="document-list" class="document-list">
+                <!-- Populated dynamically via JavaScript -->
+            </ul>
+        </section>
+
+        <!-- 3. Main Workspace / Document Editor Area -->
+        <main class="editor-area">
+            <header class="editor-header">
+                <input type="text" id="document-title-input" placeholder="Untitled Document" readonly>
+                <div class="presence-bar" id="presence-bar">
+                    <!-- Real-time user avatars will be rendered here (Day 12) -->
+                </div>
+            </header>
+            <div class="editor-body">
+                <textarea id="document-content-editor" placeholder="Select or create a document to start collaborating..." disabled></textarea>
+            </div>
+            <footer class="editor-footer">
+                <span id="save-status">System Ready</span>
+            </footer>
+        </main>
+    </div>
+
+    <!-- Application JavaScript Entry Points -->
+    <script src="js/api.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

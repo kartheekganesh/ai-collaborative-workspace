@@ -2,16 +2,17 @@ import uuid
 from datetime import datetime
 from enum import Enum
 from typing import List, Optional
-from sqlalchemy import String, Text, ForeignKey, DateTime, Enum as SQLEnum
+from sqlalchemy import String, Text, ForeignKey, DateTime, Enum as SQLEnum, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.dialects.postgresql import UUID, JSONB
-from sqlalchemy import Index
+from sqlalchemy.dialects.postgresql import UUID
 from app.core.database import Base
+
 
 class RoleEnum(str, Enum):
     ADMIN = "admin"
     EDITOR = "editor"
     VIEWER = "viewer"
+
 
 class User(Base):
     __tablename__ = "users"
@@ -23,7 +24,8 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     memberships: Mapped[List["WorkspaceMember"]] = relationship(back_populates="user", cascade="all, delete-orphan")
-#-----------------------------------------------
+
+
 class Workspace(Base):
     __tablename__ = "workspaces"
 
@@ -34,7 +36,8 @@ class Workspace(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     members: Mapped[List["WorkspaceMember"]] = relationship(back_populates="workspace", cascade="all, delete-orphan")
-#---------------------------------------------
+
+
 class WorkspaceMember(Base):
     __tablename__ = "workspace_members"
 
@@ -47,10 +50,10 @@ class WorkspaceMember(Base):
     user: Mapped["User"] = relationship(back_populates="memberships")
     workspace: Mapped["Workspace"] = relationship(back_populates="members")
 
-    # Composite index for quick permission check lookups (workspace_id + user_id)
     __table_args__ = (
         Index("idx_workspace_user_lookup", "workspace_id", "user_id"),
     )
+
 
 class Document(Base):
     __tablename__ = "documents"
@@ -63,10 +66,15 @@ class Document(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    # Index on workspace_id & updated_at for ordered document listing
+    revisions: Mapped[List["DocumentRevision"]] = relationship(
+        back_populates="document", 
+        cascade="all, delete-orphan"
+    )
+
     __table_args__ = (
         Index("idx_document_workspace_updated", "workspace_id", "updated_at"),
     )
+
 
 class DocumentRevision(Base):
     __tablename__ = "document_revisions"
@@ -78,4 +86,3 @@ class DocumentRevision(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     document: Mapped["Document"] = relationship(back_populates="revisions")
-

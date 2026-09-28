@@ -41,7 +41,7 @@ async def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: AsyncSession = Depends(get_db)
 ):
-    # 1. Fetch user by email (form_data.username contains the email)
+    # 1. Fetch user by email (form_data.username receives the email input)
     stmt = select(User).where(User.email == form_data.username)
     result = await db.execute(stmt)
     user = result.scalar_one_or_none()
@@ -49,11 +49,12 @@ async def login(
     # 2. Verify existence and password hash
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Incorrect email or password"
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+            headers={"WWW-Authenticate": "Bearer"},
         )
-    
-    # 3. Create token
+
+    # 3. Generate token and return standard payload
     access_token = create_access_token(data={"sub": user.email})
     return {"access_token": access_token, "token_type": "bearer"}
 
