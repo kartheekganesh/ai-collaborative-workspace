@@ -78,3 +78,8 @@ async def serve_frontend():
             "docs_url": "/docs",
         }
     )
+
+from app.api.v1.endpoints import ws
+
+# Register WebSocket endpoint alongside REST routers
+app.include_router(ws.router, prefix="/api/v1", tags=["WebSockets"])
