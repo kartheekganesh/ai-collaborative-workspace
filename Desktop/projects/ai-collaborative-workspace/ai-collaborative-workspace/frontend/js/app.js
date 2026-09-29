@@ -66,7 +66,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // 4. Select Document & Load into Editor
+    // 4. Select Document & Connect WebSocket
     function selectDocument(doc) {
         currentDocument = doc;
         docTitleInput.value = doc.title;
@@ -74,27 +74,55 @@ document.addEventListener('DOMContentLoaded', async () => {
         docContentEditor.value = doc.content || '';
         docContentEditor.disabled = false;
         saveStatusEl.textContent = 'Document loaded';
+
+        // Establish WebSocket connection for live editing
+        const token = Auth.getToken();
+        if (token && typeof wsClient !== 'undefined') {
+            wsClient.connect(doc.id, token);
+        }
     }
 
-    // 5. Auto-Save Debounce Handler for Content Changes
+    // 5. Listen for Live Content Updates from Connected Peers
+    if (typeof wsClient !== 'undefined') {
+        wsClient.on('content_change', (data) => {
+            // Preserve user's local cursor position before updating text
+            const selectionStart = docContentEditor.selectionStart;
+            const selectionEnd = docContentEditor.selectionEnd;
+
+            // Apply remote content update
+            docContentEditor.value = data.content;
+
+            // Restore cursor position
+            docContentEditor.setSelectionRange(selectionStart, selectionEnd);
+            saveStatusEl.textContent = 'Synced live edit';
+        });
+    }
+
+    // 6. Unified Input Event Listener (Broadcast via WS + Debounced Persistence to DB)
     docContentEditor.addEventListener('input', () => {
         if (!currentDocument || !currentWorkspace) return;
+
+        // Broadcast immediate live update over WebSocket
+        if (typeof wsClient !== 'undefined') {
+            wsClient.sendContentChange(docContentEditor.value);
+        }
+
+        // Debounce persistent REST API update to PostgreSQL database
         saveStatusEl.textContent = 'Saving changes...';
-        
         clearTimeout(saveTimeout);
         saveTimeout = setTimeout(async () => {
             try {
                 await APIClient.updateDocument(currentWorkspace.id, currentDocument.id, {
                     content: docContentEditor.value
                 });
-                saveStatusEl.textContent = 'All changes saved';
+                saveStatusEl.textContent = 'All changes saved to DB';
             } catch (err) {
                 saveStatusEl.textContent = 'Error saving document';
             }
         }, 1000); // Debounce for 1 second
     });
 
-    // 6. Action Handlers: Create Workspace & Document
+    // 7. Action Handlers: Create Workspace & Document
     btnCreateWorkspace.addEventListener('click', async () => {
         const name = prompt('Enter Workspace Name:');
         if (name) {
