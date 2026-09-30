@@ -69,3 +69,13 @@ class WebSocketClient {
 }
 
 const wsClient = new WebSocketClient();
+
+// Add to WebSocketClient class in frontend/js/ws.js
+sendCursorMove(position) {
+    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+        this.socket.send(JSON.stringify({
+            type: 'cursor_move',
+            position: position
+        }));
+    }
+}

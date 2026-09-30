@@ -1,0 +1,25 @@
+.presence-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.presence-badge {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background-color: var(--accent-blue);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    font-weight: 700;
+    border: 2px solid var(--border-color);
+    box-shadow: 0 0 8px rgba(59, 130, 246, 0.4);
+    transition: transform 0.2s ease;
+}
+
+.presence-badge:hover {
+    transform: scale(1.1);
+}

@@ -144,3 +144,43 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Initial Load
     await loadWorkspaces();
 });
+// Global Presence State
+const activeCollaborators = new Map();
+
+// Elements
+const presenceBar = document.getElementById('presence-bar');
+
+function renderPresenceBar() {
+    presenceBar.innerHTML = '';
+    activeCollaborators.forEach((user, userId) => {
+        const badge = document.createElement('div');
+        badge.className = 'presence-badge';
+        badge.title = user.email;
+        // Take first letter of email for avatar icon
+        badge.textContent = user.email.charAt(0).toUpperCase();
+        presenceBar.appendChild(badge);
+    });
+}
+
+// WS Presence Handlers
+wsClient.on('user_joined', (data) => {
+    activeCollaborators.set(data.user_id, { email: data.email });
+    renderPresenceBar();
+    saveStatusEl.textContent = `${data.email} joined`;
+});
+
+wsClient.on('user_left', (data) => {
+    activeCollaborators.delete(data.user_id);
+    renderPresenceBar();
+    saveStatusEl.textContent = `${data.email} left`;
+});
+
+// Broadcast cursor movement on selection/click/keyup inside textarea
+docContentEditor.addEventListener('keyup', handleCursorUpdate);
+docContentEditor.addEventListener('click', handleCursorUpdate);
+
+function handleCursorUpdate() {
+    if (!currentDocument) return;
+    const position = docContentEditor.selectionStart;
+    wsClient.sendCursorMove(position);
+}
