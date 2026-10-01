@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://localhost:8000/api/v1';
+const API_BASE_URL = '/api/v1';
 
 class APIClient {
     static getAuthHeader() {
@@ -18,7 +18,9 @@ class APIClient {
         
         if (response.status === 401) {
             // Handle expired or missing token
-            window.location.href = '/static/login.html';
+            if (!window.location.pathname.endsWith('/login.html')) {
+                window.location.href = '/static/login.html';
+            }
             return;
         }
 

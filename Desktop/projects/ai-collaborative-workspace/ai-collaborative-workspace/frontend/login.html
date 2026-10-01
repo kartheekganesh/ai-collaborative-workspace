@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign in - AI Collaborative Workspace</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/auth.css">
+</head>
+<body>
+    <main class="auth-container">
+        <form id="auth-form" class="auth-card">
+            <h1 id="auth-title">Sign in</h1>
+            <p id="auth-description">Sign in to open your collaborative workspace.</p>
+            <label id="name-field" class="auth-field" hidden>
+                Full name
+                <input name="full_name" autocomplete="name">
+            </label>
+            <label class="auth-field">
+                Email
+                <input name="email" type="email" autocomplete="email" required>
+            </label>
+            <label class="auth-field">
+                Password
+                <input name="password" type="password" autocomplete="current-password" required>
+            </label>
+            <p id="auth-error" class="auth-error" role="alert" aria-live="polite"></p>
+            <button id="submit-button" class="auth-submit" type="submit">Sign in</button>
+            <button id="toggle-mode" class="auth-toggle" type="button">Create an account</button>
+        </form>
+    </main>
+    <script src="/static/js/login.js"></script>
+</body>
+</html>

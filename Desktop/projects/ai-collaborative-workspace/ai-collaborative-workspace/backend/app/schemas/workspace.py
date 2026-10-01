@@ -1,7 +1,8 @@
 import uuid
 from datetime import datetime
 from typing import Optional, List
-from pydantic import BaseModel
+#from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from app.models.workspace import RoleEnum
 
 class WorkspaceCreate(BaseModel):
@@ -29,3 +30,6 @@ class WorkspaceResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+class UserResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
