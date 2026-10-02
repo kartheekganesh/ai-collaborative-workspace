@@ -17,3 +17,17 @@ def generate_document_summary(self, document_id: str, content: str):
         "document_id": document_id,
         "summary": f"AIGenerated Summary: {summary}"
     }
+from app.core.celery_app import celery_app
+from app.services.text_chunker import text_chunker
+
+@celery_app.task(name="app.tasks.ai.process_document_chunks", bind=True)
+def process_document_chunks(self, document_id: str, content: str):
+    """Splits document text into chunks ready for embedding generation."""
+    chunks = text_chunker.split_text(content)
+    
+    # Return chunk metadata array to be picked up by the vector embedding generation service
+    return {
+        "document_id": document_id,
+        "total_chunks": len(chunks),
+        "chunk_previews": [c[:50] + "..." for c in chunks]
+    }
