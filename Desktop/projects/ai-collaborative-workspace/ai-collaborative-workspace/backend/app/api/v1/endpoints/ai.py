@@ -1,6 +1,7 @@
 import uuid
+from pydantic import BaseModel
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from celery.result import AsyncResult
@@ -12,12 +13,20 @@ from app.tasks.ai_tasks import ping_ai_service
 from app.services.vector_search import vector_search_service
 from app.services.rag_builder import rag_prompt_builder
 from app.services.llm_streamer import llm_streamer
+from app.core.rate_limiter import limiter
 
 router = APIRouter()
 
 
+class TransformRequest(BaseModel):
+    action: str  # e.g., 'rephrase', 'summarize', 'fix_grammar'
+    text: str
+
+
 @router.post("/tasks/ping")
+@limiter.limit("10/minute")
 async def trigger_ping_task(
+    request: Request,
     current_user: User = Depends(get_current_user)
 ):
     """Enqueue a health-check task in the AI queue."""
@@ -26,7 +35,9 @@ async def trigger_ping_task(
 
 
 @router.get("/tasks/{task_id}/status")
+@limiter.limit("30/minute")
 async def get_task_status(
+    request: Request,
     task_id: str,
     current_user: User = Depends(get_current_user)
 ):
@@ -49,7 +60,9 @@ async def get_task_status(
 
 
 @router.get("/documents/{document_id}/search")
+@limiter.limit("15/minute")
 async def search_document_context(
+    request: Request,
     document_id: uuid.UUID,
     q: str = Query(..., description="Semantic search query"),
     db: AsyncSession = Depends(get_db),
@@ -69,20 +82,18 @@ async def search_document_context(
 
 
 @router.get("/documents/{document_id}/ask/stream")
+@limiter.limit("5/minute")
 async def stream_document_ai_query(
+    request: Request,
     document_id: uuid.UUID,
     prompt: str = Query(..., description="User query for the document AI"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """Retrieves relevant document context and streams the AI answer via SSE."""
-    # 1. Retrieve top-K relevant chunks using pgvector
     chunks = await vector_search_service.retrieve_relevant_chunks(db, document_id, prompt)
-
-    # 2. Assemble prompt with context block
     full_prompt = rag_prompt_builder.build_context_prompt(prompt, chunks)
 
-    # 3. Stream response with appropriate SSE headers to bypass reverse-proxy buffering
     return StreamingResponse(
         llm_streamer.stream_rag_response(full_prompt),
         media_type="text/event-stream",
@@ -93,17 +104,13 @@ async def stream_document_ai_query(
         }
     )
 
-    # In backend/app/api/v1/endpoints/ai.py
-from pydantic import BaseModel
-
-class TransformRequest(BaseModel):
-    action: str  # e.g., 'rephrase', 'summarize', 'fix_grammar'
-    text: str
 
 @router.post("/transform")
+@limiter.limit("10/minute")
 async def transform_text(
+    request: Request,
     payload: TransformRequest,
-    current_user: dict = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     """Applies quick inline AI edits to selected text snippets."""
     action_prompts = {
@@ -115,7 +122,6 @@ async def transform_text(
     prefix = action_prompts.get(payload.action, "Improve the following text:")
     full_prompt = f"{prefix}\n\n\"{payload.text}\""
 
-    # Synchronous call or quick stream response
     transformed = await llm_streamer.client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[{"role": "user", "content": full_prompt}],
