@@ -92,3 +92,35 @@ async def stream_document_ai_query(
             "X-Accel-Buffering": "no"
         }
     )
+
+    # In backend/app/api/v1/endpoints/ai.py
+from pydantic import BaseModel
+
+class TransformRequest(BaseModel):
+    action: str  # e.g., 'rephrase', 'summarize', 'fix_grammar'
+    text: str
+
+@router.post("/transform")
+async def transform_text(
+    payload: TransformRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """Applies quick inline AI edits to selected text snippets."""
+    action_prompts = {
+        "rephrase": "Rephrase the following text to be clear, professional, and concise:",
+        "summarize": "Summarize the following text in one crisp sentence:",
+        "fix_grammar": "Correct all grammar, spelling, and punctuation errors in the following text:"
+    }
+
+    prefix = action_prompts.get(payload.action, "Improve the following text:")
+    full_prompt = f"{prefix}\n\n\"{payload.text}\""
+
+    # Synchronous call or quick stream response
+    transformed = await llm_streamer.client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": full_prompt}],
+        temperature=0.2
+    )
+    
+    result_text = transformed.choices[0].message.content.strip('"')
+    return {"status": "success", "transformed_text": result_text}

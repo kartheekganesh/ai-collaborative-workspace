@@ -38,28 +38,83 @@
             </ul>
         </section>
 
-        <!-- 3. Main Workspace / Document Editor Area -->
-        <main class="editor-area">
-            <header class="editor-header">
-                <input type="text" id="document-title-input" placeholder="Untitled Document" readonly>
-                <div class="presence-bar" id="presence-bar">
-                    <!-- Real-time user avatars will be rendered here (Day 12) -->
+        <!-- 3. Workspace Container with Main Editor & Collapsible AI Sidebar -->
+        <div id="workspace-container" class="workspace-container">
+            <!-- Main Workspace / Document Editor Area -->
+            <main class="editor-area">
+                <header class="editor-header">
+                    <input type="text" id="document-title-input" placeholder="Untitled Document" readonly>
+                    <div class="presence-bar" id="presence-bar">
+                        <!-- Real-time user avatars will be rendered here (Day 12) -->
+                    </div>
+                </header>
+                <div class="editor-body">
+                    <textarea id="document-content-editor" placeholder="Select or create a document to start collaborating..." disabled></textarea>
                 </div>
-            </header>
-            <div class="editor-body">
-                <textarea id="document-content-editor" placeholder="Select or create a document to start collaborating..." disabled></textarea>
-            </div>
-            <footer class="editor-footer">
-                <span id="save-status">System Ready</span>
-            </footer>
-        </main>
+                <footer class="editor-footer">
+                    <span id="save-status">System Ready</span>
+                </footer>
+            </main>
+
+            <!-- Collapsible AI Sidebar -->
+            <aside id="ai-sidebar" class="ai-sidebar collapsed">
+                <!-- Sidebar Toggle Button -->
+                <button id="ai-sidebar-toggle" class="sidebar-toggle-btn" aria-label="Toggle AI Assistant">
+                    <span class="toggle-icon">‹</span>
+                </button>
+
+                <div class="sidebar-content">
+                    <!-- Sidebar Header -->
+                    <header class="sidebar-header">
+                        <div class="header-title">
+                            <svg class="ai-sparkle-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
+                            </svg>
+                            <h3>AI Assistant</h3>
+                        </div>
+                        <button id="clear-history-btn" class="icon-btn" title="Clear Chat History">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="3 6 5 6 21 6"></polyline>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                            </svg>
+                        </button>
+                    </header>
+
+                    <!-- Chat History Container -->
+                    <div id="ai-chat-history" class="chat-history">
+                        <!-- Messages dynamically populate here -->
+                        <div class="chat-welcome">
+                            <p>Ask a question about this document to stream responses in real time.</p>
+                        </div>
+                    </div>
+
+                    <!-- Chat Input Area -->
+                    <form id="ai-chat-form" class="chat-input-area">
+                        <textarea 
+                            id="ai-prompt-input" 
+                            placeholder="Ask AI about this document..." 
+                            rows="1" 
+                            required
+                        ></textarea>
+                        <button type="submit" id="ai-send-btn" class="send-btn" aria-label="Send message">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="22" y1="2" x2="11" y2="13"></line>
+                                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                            </svg>
+                        </button>
+                    </form>
+                </div>
+            </aside>
+        </div>
     </div>
 
-    <!-- Application JavaScript Entry Points -->
     <!-- Application JavaScript Entry Points -->
     <script src="/static/js/api.js"></script>
     <script src="/static/js/auth.js"></script>
     <script src="/static/js/ws.js"></script>
     <script src="/static/js/app.js"></script>
+    <script src="/static/js/ai.js"></script>
+    <script src="/static/js/inline_ai.js"></script>
+    
 </body>
 </html>
