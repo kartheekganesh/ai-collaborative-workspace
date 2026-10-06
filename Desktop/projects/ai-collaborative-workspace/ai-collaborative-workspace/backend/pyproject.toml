@@ -1,0 +1,13 @@
+# backend/pyproject.toml
+[tool.black]
+line-length = 100
+target-version = ['py311']
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+  | \.venv
+  | venv
+  | alembic/versions
+)/
+'''
