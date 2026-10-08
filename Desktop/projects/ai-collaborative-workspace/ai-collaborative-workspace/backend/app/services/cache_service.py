@@ -1,17 +1,18 @@
 import json
-from typing import Optional, Any
-import aioredis
-import os
+from typing import Any, Optional
 
-REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
+import redis.asyncio as redis
+
+from app.core.config import settings
+
 
 class CacheService:
     def __init__(self):
-        self.redis: Optional[aioredis.Redis] = None
+        self.redis: redis.Redis | None = None
 
     async def connect(self):
         if not self.redis:
-            self.redis = await aioredis.from_url(REDIS_URL, decode_responses=True)
+            self.redis = redis.from_url(settings.REDIS_URL, decode_responses=True)
 
     async def get(self, key: str) -> Optional[Any]:
         await self.connect()
@@ -24,8 +25,13 @@ class CacheService:
 
     async def invalidate_pattern(self, pattern: str):
         await self.connect()
-        keys = await self.redis.keys(pattern)
-        if keys:
-            await self.redis.delete(*keys)
+        async for key in self.redis.scan_iter(match=pattern):
+            await self.redis.delete(key)
+
+    async def close(self):
+        if self.redis:
+            await self.redis.aclose()
+            self.redis = None
+
 
 cache_service = CacheService()

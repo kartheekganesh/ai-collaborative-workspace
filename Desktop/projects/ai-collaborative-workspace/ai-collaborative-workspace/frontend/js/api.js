@@ -56,7 +56,7 @@ class APIClient {
     }
     static updateDocument(workspaceId, docId, data) {
         return this.request(`/workspaces/${workspaceId}/documents/${docId}`, {
-            method: 'PUT',
+            method: 'PATCH',
             body: JSON.stringify(data)
         });
     }

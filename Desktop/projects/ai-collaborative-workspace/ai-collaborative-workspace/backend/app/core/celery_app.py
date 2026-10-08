@@ -4,8 +4,8 @@ import sys
 # Ensure top-level directory is in Python's import path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
-from celery import Celery
-from app.core.config import settings
+from celery import Celery  # noqa: E402
+from app.core.config import settings  # noqa: E402
 
 # Retrieve Redis URL from settings or environment fallback
 REDIS_URL = getattr(settings, "REDIS_URL", os.getenv("REDIS_URL", "redis://redis:6379/0"))
@@ -17,7 +17,7 @@ celery_app = Celery(
     # Explicitly include all task modules so Celery registers them on startup
     include=[
         "app.tasks.document_tasks",
-        # "app.tasks.ai_tasks", # Uncomment if/when AI tasks module is ready
+        "app.tasks.ai_tasks",
     ],
 )
 

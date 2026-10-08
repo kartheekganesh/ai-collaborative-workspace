@@ -241,6 +241,35 @@ body {
   border-bottom-left-radius: 2px;
 }
 
+.hidden {
+  display: none !important;
+}
+
+.inline-ai-toolbar {
+  z-index: 1000;
+  display: flex;
+  gap: 4px;
+  padding: 6px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.16);
+}
+
+.inline-ai-toolbar button {
+  border: 0;
+  border-radius: 5px;
+  padding: 6px 8px;
+  background: #f1f5f9;
+  color: #1e293b;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.inline-ai-toolbar button:hover {
+  background: #e0e7ff;
+}
+
 /* Input Area */
 .chat-input-area {
   display: flex;

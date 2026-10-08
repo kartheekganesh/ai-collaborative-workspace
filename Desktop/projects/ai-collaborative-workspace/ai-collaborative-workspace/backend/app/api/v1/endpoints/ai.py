@@ -1,14 +1,15 @@
 import uuid
-from pydantic import BaseModel
+from typing import Literal
+from pydantic import BaseModel, Field
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from celery.result import AsyncResult
 
 from app.core.database import get_db
-from app.api.deps import get_current_user
-from app.models.workspace import User
+from app.api.deps import check_document_permission, get_current_user
+from app.models.workspace import Document, User
 from app.tasks.ai_tasks import ping_ai_service
 from app.services.vector_search import vector_search_service
 from app.services.rag_builder import rag_prompt_builder
@@ -19,16 +20,13 @@ router = APIRouter()
 
 
 class TransformRequest(BaseModel):
-    action: str  # e.g., 'rephrase', 'summarize', 'fix_grammar'
-    text: str
+    action: Literal["rephrase", "summarize", "fix_grammar"]
+    text: str = Field(min_length=1, max_length=12000)
 
 
 @router.post("/tasks/ping")
 @limiter.limit("10/minute")
-async def trigger_ping_task(
-    request: Request,
-    current_user: User = Depends(get_current_user)
-):
+async def trigger_ping_task(request: Request, current_user: User = Depends(get_current_user)):
     """Enqueue a health-check task in the AI queue."""
     task = ping_ai_service.delay()
     return {"task_id": task.id, "status": "Task enqueued"}
@@ -37,9 +35,7 @@ async def trigger_ping_task(
 @router.get("/tasks/{task_id}/status")
 @limiter.limit("30/minute")
 async def get_task_status(
-    request: Request,
-    task_id: str,
-    current_user: User = Depends(get_current_user)
+    request: Request, task_id: str, current_user: User = Depends(get_current_user)
 ):
     """Poll Celery result backend for task status and completion payloads."""
     task_result = AsyncResult(task_id)
@@ -52,11 +48,7 @@ async def get_task_status(
             # Safely stringify exception to prevent JSON serialization errors
             result = str(task_result.result)
 
-    return {
-        "task_id": task_id,
-        "status": task_result.status,
-        "result": result
-    }
+    return {"task_id": task_id, "status": task_result.status, "result": result}
 
 
 @router.get("/documents/{document_id}/search")
@@ -64,20 +56,21 @@ async def get_task_status(
 async def search_document_context(
     request: Request,
     document_id: uuid.UUID,
-    q: str = Query(..., description="Semantic search query"),
+    q: str = Query(..., min_length=1, max_length=2000, description="Semantic search query"),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    _document: Document = Depends(check_document_permission),
 ):
     """Performs vector similarity search against document chunks and constructs RAG context."""
     chunks = await vector_search_service.retrieve_relevant_chunks(db, document_id, q)
     formatted_prompt = rag_prompt_builder.build_context_prompt(q, chunks)
-    
+
     return {
         "document_id": document_id,
         "query": q,
         "results_count": len(chunks),
         "chunks": chunks,
-        "constructed_prompt_preview": formatted_prompt
+        "constructed_prompt_preview": formatted_prompt,
     }
 
 
@@ -86,9 +79,12 @@ async def search_document_context(
 async def stream_document_ai_query(
     request: Request,
     document_id: uuid.UUID,
-    prompt: str = Query(..., description="User query for the document AI"),
+    prompt: str = Query(
+        ..., min_length=1, max_length=2000, description="User query for the document AI"
+    ),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    _document: Document = Depends(check_document_permission),
 ):
     """Retrieves relevant document context and streams the AI answer via SSE."""
     chunks = await vector_search_service.retrieve_relevant_chunks(db, document_id, prompt)
@@ -100,8 +96,8 @@ async def stream_document_ai_query(
         headers={
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
-            "X-Accel-Buffering": "no"
-        }
+            "X-Accel-Buffering": "no",
+        },
     )
 
 
@@ -110,23 +106,34 @@ async def stream_document_ai_query(
 async def transform_text(
     request: Request,
     payload: TransformRequest,
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Applies quick inline AI edits to selected text snippets."""
     action_prompts = {
         "rephrase": "Rephrase the following text to be clear, professional, and concise:",
         "summarize": "Summarize the following text in one crisp sentence:",
-        "fix_grammar": "Correct all grammar, spelling, and punctuation errors in the following text:"
+        "fix_grammar": (
+            "Correct all grammar, spelling, and punctuation errors in the following text:"
+        ),
     }
 
-    prefix = action_prompts.get(payload.action, "Improve the following text:")
-    full_prompt = f"{prefix}\n\n\"{payload.text}\""
+    if llm_streamer.client is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="AI text transformation is unavailable because no API key is configured.",
+        )
+
+    full_prompt = f'{action_prompts[payload.action]}\n\n"{payload.text}"'
 
     transformed = await llm_streamer.client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[{"role": "user", "content": full_prompt}],
-        temperature=0.2
+        model="gpt-4o-mini", messages=[{"role": "user", "content": full_prompt}], temperature=0.2
     )
-    
-    result_text = transformed.choices[0].message.content.strip('"')
+
+    result_text = transformed.choices[0].message.content
+    if not result_text:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="The AI provider returned an empty transformation.",
+        )
+    result_text = result_text.strip('"')
     return {"status": "success", "transformed_text": result_text}

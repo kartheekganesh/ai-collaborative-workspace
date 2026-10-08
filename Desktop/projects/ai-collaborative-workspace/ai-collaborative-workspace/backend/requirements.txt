@@ -16,5 +16,8 @@ passlib[bcrypt]>=1.7.4
 bcrypt==4.1.2
 python-multipart>=0.0.9
 celery>=5.3.6
-redis>=5.0.1
 flower>=2.0.0
+alembic>=1.13.0
+pgvector
+openai>=1.0.0
+slowapi>=0.1.9

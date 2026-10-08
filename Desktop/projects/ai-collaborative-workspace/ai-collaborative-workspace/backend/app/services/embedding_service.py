@@ -2,6 +2,7 @@ import os
 from typing import List
 from openai import AsyncOpenAI
 
+
 class EmbeddingService:
     def __init__(self):
         self.api_key = os.getenv("OPENAI_API_KEY")
@@ -19,14 +20,12 @@ class EmbeddingService:
             print("[EmbeddingService] WARNING: No API key found. Using mock vectors.")
             return [[0.01 * (i + 1)] * self.dimensions for i in range(len(texts))]
 
-        response = await self.client.embeddings.create(
-            input=texts,
-            model=self.model
-        )
+        response = await self.client.embeddings.create(input=texts, model=self.model)
         return [data.embedding for data in response.data]
 
     async def get_single_embedding(self, text: str) -> List[float]:
         results = await self.get_embeddings([text])
         return results[0] if results else []
+
 
 embedding_service = EmbeddingService()

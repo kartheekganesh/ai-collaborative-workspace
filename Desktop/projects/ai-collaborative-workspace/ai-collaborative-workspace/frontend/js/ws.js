@@ -14,23 +14,20 @@ class WebSocketClient {
     }
 
     connect(documentId, token) {
-        // Reset flag and state for new intentional connection
-        this.isIntentionalDisconnect = false;
-        
         // Close existing connection cleanly if switching documents
-        if (this.socket) {
-            this.disconnect();
-        }
+        this.disconnect();
 
         this.currentDocId = documentId;
         this.token = token;
+        this.isIntentionalDisconnect = false;
 
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${protocol}//${window.location.host}/api/v1/ws/documents/${documentId}?token=${token}`;
+        const wsUrl = `${protocol}//${window.location.host}/api/v1/ws/documents/${documentId}?token=${encodeURIComponent(token)}`;
 
-        this.socket = new WebSocket(wsUrl);
+        const socket = new WebSocket(wsUrl);
+        this.socket = socket;
 
-        this.socket.onopen = () => {
+        socket.onopen = () => {
             console.log(`[WS] Connected to document room: ${documentId}`);
             this.reconnectAttempts = 0; // Reset reconnection counter on success
             if (this.reconnectTimer) {
@@ -40,7 +37,7 @@ class WebSocketClient {
             this.trigger('connect', null);
         };
 
-        this.socket.onmessage = (event) => {
+        socket.onmessage = (event) => {
             try {
                 const message = JSON.parse(event.data);
                 this.trigger(message.type, message);
@@ -49,7 +46,8 @@ class WebSocketClient {
             }
         };
 
-        this.socket.onclose = (event) => {
+        socket.onclose = (event) => {
+            if (this.socket !== socket) return;
             console.log('[WS] Connection closed', event.code, event.reason);
             this.trigger('disconnect', null);
 
@@ -59,7 +57,7 @@ class WebSocketClient {
             }
         };
 
-        this.socket.onerror = (err) => {
+        socket.onerror = (err) => {
             console.error('[WS] Error encountered:', err);
             // Browser handles socket closing automatically on error, triggering `onclose`
         };
@@ -125,8 +123,9 @@ class WebSocketClient {
         }
 
         if (this.socket) {
-            this.socket.close();
+            const socket = this.socket;
             this.socket = null;
+            socket.close();
         }
     }
 }

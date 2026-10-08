@@ -16,22 +16,18 @@ router = APIRouter(prefix="/workspaces", tags=["Workspaces"])
 async def create_workspace(
     workspace_in: WorkspaceCreate,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     # 1. Create Workspace
     new_workspace = Workspace(
-        name=workspace_in.name,
-        description=workspace_in.description,
-        owner_id=current_user.id
+        name=workspace_in.name, description=workspace_in.description, owner_id=current_user.id
     )
     db.add(new_workspace)
     await db.flush()  # Populate new_workspace.id
 
     # 2. Automatically assign creator as ADMIN member
     membership = WorkspaceMember(
-        workspace_id=new_workspace.id,
-        user_id=current_user.id,
-        role=RoleEnum.ADMIN
+        workspace_id=new_workspace.id, user_id=current_user.id, role=RoleEnum.ADMIN
     )
     db.add(membership)
     await db.commit()
@@ -41,15 +37,10 @@ async def create_workspace(
 
 @router.get("", response_model=List[WorkspaceResponse])
 async def list_my_workspaces(
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
 ):
     # Retrieve all workspaces where user is a member
-    stmt = (
-        select(Workspace)
-        .join(WorkspaceMember)
-        .where(WorkspaceMember.user_id == current_user.id)
-    )
+    stmt = select(Workspace).join(WorkspaceMember).where(WorkspaceMember.user_id == current_user.id)
     result = await db.execute(stmt)
     return result.scalars().all()
 
@@ -60,17 +51,14 @@ async def get_workspace(
     _member: WorkspaceMember = Depends(
         check_workspace_permission([RoleEnum.ADMIN, RoleEnum.EDITOR, RoleEnum.VIEWER])
     ),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     stmt = select(Workspace).where(Workspace.id == workspace_id)
     result = await db.execute(stmt)
     workspace = result.scalar_one_or_none()
-    
+
     if not workspace:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Workspace not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workspace not found")
     return workspace
 
 
@@ -78,20 +66,15 @@ async def get_workspace(
 async def update_workspace(
     workspace_id: uuid.UUID,
     workspace_in: WorkspaceUpdate,
-    _member: WorkspaceMember = Depends(
-        check_workspace_permission([RoleEnum.ADMIN])
-    ),
-    db: AsyncSession = Depends(get_db)
+    _member: WorkspaceMember = Depends(check_workspace_permission([RoleEnum.ADMIN])),
+    db: AsyncSession = Depends(get_db),
 ):
     stmt = select(Workspace).where(Workspace.id == workspace_id)
     result = await db.execute(stmt)
     workspace = result.scalar_one_or_none()
 
     if not workspace:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Workspace not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workspace not found")
 
     if workspace_in.name is not None:
         workspace.name = workspace_in.name

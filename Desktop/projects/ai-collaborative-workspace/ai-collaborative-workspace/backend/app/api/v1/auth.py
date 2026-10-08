@@ -20,15 +20,14 @@ async def register(user_in: UserCreate, db: AsyncSession = Depends(get_db)):
     result = await db.execute(stmt)
     if result.scalar_one_or_none():
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="User with this email already exists."
+            status_code=status.HTTP_400_BAD_REQUEST, detail="User with this email already exists."
         )
-    
+
     # Create new user
     new_user = User(
         email=user_in.email,
         hashed_password=get_password_hash(user_in.password),
-        full_name=user_in.full_name
+        full_name=user_in.full_name,
     )
     db.add(new_user)
     await db.commit()
@@ -38,8 +37,7 @@ async def register(user_in: UserCreate, db: AsyncSession = Depends(get_db)):
 
 @router.post("/login", response_model=Token)
 async def login(
-    form_data: OAuth2PasswordRequestForm = Depends(),
-    db: AsyncSession = Depends(get_db)
+    form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)
 ):
     # 1. Fetch user by email (form_data.username receives the email input)
     stmt = select(User).where(User.email == form_data.username)
@@ -55,7 +53,10 @@ async def login(
         )
 
     # 3. Generate token and return standard payload
-    access_token = create_access_token(subject=user.email)
+    access_token = create_access_token(
+        subject=str(user.id),
+        additional_claims={"email": user.email},
+    )
     return {"access_token": access_token, "token_type": "bearer"}
 
 

@@ -4,7 +4,6 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi_cache.decorator import cache
 
 from app.api.deps import check_workspace_permission, get_current_user
 from app.core.database import get_db
@@ -16,7 +15,6 @@ from app.models.workspace import (
 )
 from app.schemas.document import DocumentCreate, DocumentResponse, DocumentUpdate
 from app.tasks.ai_tasks import embed_and_store_document
-
 
 router = APIRouter(
     prefix="/workspaces/{workspace_id}/documents",
@@ -50,31 +48,23 @@ async def create_document(
 
 
 @router.get("", response_model=List[DocumentResponse])
-@cache(expire=60)
 async def list_workspace_documents(
     workspace_id: uuid.UUID,
     _member: WorkspaceMember = Depends(
-        check_workspace_permission(
-            [RoleEnum.ADMIN, RoleEnum.EDITOR, RoleEnum.VIEWER]
-        )
+        check_workspace_permission([RoleEnum.ADMIN, RoleEnum.EDITOR, RoleEnum.VIEWER])
     ),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(
-        select(Document).where(Document.workspace_id == workspace_id)
-    )
+    result = await db.execute(select(Document).where(Document.workspace_id == workspace_id))
     return result.scalars().all()
 
 
 @router.get("/{document_id}", response_model=DocumentResponse)
-@cache(expire=120)
 async def get_document(
     workspace_id: uuid.UUID,
     document_id: uuid.UUID,
     _member: WorkspaceMember = Depends(
-        check_workspace_permission(
-            [RoleEnum.ADMIN, RoleEnum.EDITOR, RoleEnum.VIEWER]
-        )
+        check_workspace_permission([RoleEnum.ADMIN, RoleEnum.EDITOR, RoleEnum.VIEWER])
     ),
     db: AsyncSession = Depends(get_db),
 ):

@@ -1,66 +1,90 @@
-// frontend/js/inline_ai.js
 const InlineAIToolbar = {
     init() {
-        this.toolbar = document.getElementById('inline-ai-toolbar');
-        this.editor = document.getElementById('editor');
-
+        this.editor = document.getElementById('document-content-editor');
         if (!this.editor) return;
 
-        // Listen for selection changes inside the document editor
-        document.addEventListener('selectionchange', () => this.handleSelection());
+        this.toolbar = document.createElement('div');
+        this.toolbar.className = 'inline-ai-toolbar hidden';
+        this.toolbar.style.position = 'fixed';
+        this.toolbar.setAttribute('role', 'toolbar');
+        this.toolbar.setAttribute('aria-label', 'AI text tools');
+
+        [
+            ['rephrase', 'Rephrase'],
+            ['summarize', 'Summarize'],
+            ['fix_grammar', 'Fix grammar']
+        ].forEach(([action, label]) => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.textContent = label;
+            button.addEventListener('mousedown', (event) => event.preventDefault());
+            button.addEventListener('click', () => this.executeAction(action));
+            this.toolbar.appendChild(button);
+        });
+
+        document.body.appendChild(this.toolbar);
+        this.editor.addEventListener('select', () => this.handleSelection());
+        this.editor.addEventListener('mouseup', () => this.handleSelection());
+        this.editor.addEventListener('keyup', () => this.handleSelection());
+        document.addEventListener('mousedown', (event) => {
+            if (!this.toolbar.contains(event.target) && event.target !== this.editor) {
+                this.hideToolbar();
+            }
+        });
     },
 
     handleSelection() {
-        const selection = window.getSelection();
-        const selectedText = selection.toString().trim();
-
-        if (!selectedText || selectedText.length < 5) {
+        const start = this.editor.selectionStart;
+        const end = this.editor.selectionEnd;
+        if (end - start < 5 || !this.editor.value.slice(start, end).trim()) {
             this.hideToolbar();
             return;
         }
 
-        const range = selection.getRangeAt(0);
-        const rect = range.getBoundingClientRect();
-
-        // Position floating toolbar above the selected text
-        this.toolbar.style.top = `${rect.top + window.scrollY - 45}px`;
-        this.toolbar.style.left = `${rect.left + window.scrollX}px`;
+        const bounds = this.editor.getBoundingClientRect();
+        this.toolbar.style.top = `${Math.max(8, bounds.top - 44)}px`;
+        this.toolbar.style.left = `${bounds.left + Math.min(bounds.width - 240, 12)}px`;
         this.toolbar.classList.remove('hidden');
     },
 
     hideToolbar() {
-        if (this.toolbar) {
-            this.toolbar.classList.add('hidden');
-        }
+        this.toolbar?.classList.add('hidden');
     },
 
-    async executeAction(actionType) {
-        const selectedText = window.getSelection().toString();
-        if (!selectedText) return;
+    async executeAction(action) {
+        const start = this.editor.selectionStart;
+        const end = this.editor.selectionEnd;
+        const selectedText = this.editor.value.slice(start, end);
+        if (!selectedText.trim()) return;
 
-        // Route selection to backend inline AI endpoint
-        const response = await fetch('/api/v1/ai/transform', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
-            },
-            body: JSON.stringify({ action: actionType, text: selectedText })
-        });
+        try {
+            const response = await fetch('/api/v1/ai/transform', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...APIClient.getAuthHeader()
+                },
+                body: JSON.stringify({ action, text: selectedText })
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(data.detail || 'Unable to transform the selected text.');
+            }
 
-        const data = await response.json();
-        if (data.transformed_text) {
-            this.replaceSelectedText(data.transformed_text);
+            const before = this.editor.value.slice(0, start);
+            const after = this.editor.value.slice(end);
+            this.editor.value = `${before}${data.transformed_text}${after}`;
+            this.editor.focus();
+            this.editor.setSelectionRange(
+                start,
+                start + data.transformed_text.length
+            );
+            this.editor.dispatchEvent(new Event('input', { bubbles: true }));
+            this.hideToolbar();
+        } catch (error) {
+            const saveStatus = document.getElementById('save-status');
+            if (saveStatus) saveStatus.textContent = error.message;
         }
-        this.hideToolbar();
-    },
-
-    replaceSelectedText(newText) {
-        const selection = window.getSelection();
-        if (!selection.rangeCount) return;
-        const range = selection.getRangeAt(0);
-        range.deleteContents();
-        range.insertNode(document.createTextNode(newText));
     }
 };
 

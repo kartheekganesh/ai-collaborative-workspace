@@ -9,8 +9,8 @@ from alembic import context
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from app.core.database import Base
-from app.models import workspace  # noqa: F401
+from app.core.database import Base  # noqa: E402
+from app.models import vector, workspace  # noqa: E402, F401
 
 config = context.config
 if config.config_file_name is not None:
@@ -57,4 +57,5 @@ if context.is_offline_mode():
     run_migrations_offline()
 else:
     import asyncio
+
     asyncio.run(run_async_migrations())
